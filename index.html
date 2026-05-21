@@ -372,17 +372,39 @@ function extractJSON(text) {
 // ==================== State ====================
 var state = { mistakes: [], exercises: {}, exerciseResults: {}, deferred: [] };
 
+// 修改后的 loadState
 function loadState() {
-  window.storage.get('math-app-v3').then(function(r) {
-    if (r && r.value) {
-      try { var s = JSON.parse(r.value); state = Object.assign(state, s); } catch(e) {}
+  try {
+    // 优先尝试读取 window.storage（如果在 Claude 里），否则用 localStorage
+    if (window.storage && typeof window.storage.get === 'function') {
+      window.storage.get('math-app-v3').then(function(r) {
+        if (r && r.value) {
+          try { var s = JSON.parse(r.value); state = Object.assign(state, s); } catch(e) {}
+        }
+        updateHome(); renderMistakes();
+      }).catch(function() { updateHome(); renderMistakes(); });
+    } else {
+      // 本地模式：使用 localStorage
+      var saved = localStorage.getItem('math-app-v3');
+      if (saved) {
+        try { state = Object.assign(state, JSON.parse(saved)); } catch(e) {}
+      }
+      updateHome(); renderMistakes();
     }
+  } catch(e) {
     updateHome(); renderMistakes();
-  }).catch(function() { updateHome(); renderMistakes(); });
+  }
 }
 
+// 修改后的 saveState
 function saveState() {
-  return window.storage.set('math-app-v3', JSON.stringify(state)).catch(function() {});
+  if (window.storage && typeof window.storage.set === 'function') {
+    return window.storage.set('math-app-v3', JSON.stringify(state)).catch(function() {});
+  } else {
+    // 本地模式：使用 localStorage
+    localStorage.setItem('math-app-v3', JSON.stringify(state));
+    return Promise.resolve();
+  }
 }
 
 // ==================== Helpers ====================
